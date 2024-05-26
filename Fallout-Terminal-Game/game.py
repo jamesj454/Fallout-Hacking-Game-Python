@@ -5,10 +5,10 @@ import time
 class IdleGame:
     
     def __init__(self):
-        self.attemptsRemaining = 4 # Number of attempts before 10 sec lockout
-        self.numOfColumns = 20 # X size of grid
-        self.numOfRows = 14 # Y size of grid
-        self.gameDifficulty = 5 # Num of letters in word
+        self.attemptsRemaining = 4  # Number of attempts before 10 sec lockout
+        self.numOfColumns = 20      # X size of grid
+        self.numOfRows = 17         # Y size of grid
+        self.gameDifficulty = 5     # Num of letters in word
         self.lineScrollSpeed = 0.03 # How fast text should 'load' onto the terminal
         
         self.staticWords = ["%","!","=","(",")","*","<",">",":",";","'","@","[","]","&"]
@@ -16,7 +16,8 @@ class IdleGame:
         self.outputString = ""
         self.gameOver = False
         self.wordsList = []
-        
+    
+    # Gets the file that words are stored in based on difficulty.    
     def GetWords(self):
         self.wordsList = []
         with open(self.GetWordFileName()) as f:
@@ -26,24 +27,33 @@ class IdleGame:
     def GetWordFileName(self):
         return 'word' + str(self.gameDifficulty) + '.txt'
     
+    # Prints out the formatted attempts remaining
     def DrawAttemptsRemaining(self):
         attemptBlock = '█ '
         attemptX = 0
-        attemptString = "ATTEMPTS REMAINING: "
+        attemptString = str(self.attemptsRemaining) + " ATTEMPT(S) REMAINING: "
         while attemptX < self.attemptsRemaining:
             attemptString += attemptBlock
             attemptX += 1
             if self.attemptsRemaining == 1:
-                attemptString += "| WARNING: SECURITY LOCKOUT IMMINENT!"
-        print(attemptString + '\n')
-            
+                self.PrintLine("!!! WARNING: LOCKOUT IMMINENT !!!\n")
+        self.PrintLine(attemptString + '\n')
+    
+    # Prints each line in string with a delay on each line to simulate loading
+    def PrintLine(self, string): 
+        output_lines = string.split('\n')
+        for line in output_lines:
+                time.sleep(self.lineScrollSpeed)
+                print(line)
+    
+    # Called at start of game to put words in the correct places
     def GenerateScreen(self):
+        self.PrintLine ("ROBCO INDUSTRIES (TM) TERMLINK PROTOCOL")
+        self.DrawAttemptsRemaining()
+        
         self.GetWords()
         self.chosenWord = random.choice(self.wordsList)
         insertChosenWordAtY = random.randint(0, self.numOfRows - 1)
-            
-        self.DrawAttemptsRemaining()
-        
         for row in range(self.numOfRows):
             insertWordAtX = random.randint(0, self.numOfColumns - 1)
             line = ""
@@ -57,19 +67,19 @@ class IdleGame:
                 else:
                     line += random.choice(self.staticWords)
             
-            time.sleep(self.lineScrollSpeed)
-            self.outputString += line + "\n"
-            print(line)
+            self.outputString += hex(id(row)) + ' ' + line + "\n"
+            self.PrintLine(hex(id(row)) + ' ' + line)
         print('\n')
         
     def RedrawScreen(self):
         os.system('cls' if os.name == 'nt' else 'clear')
+        print ("ROBCO INDUSTRIES (TM) TERMLINK PROTOCOL")
         self.DrawAttemptsRemaining()
         output_lines = self.outputString.split('\n')
         for line in output_lines:
-            print(line)
-            time.sleep(self.lineScrollSpeed)
-        
+            if line != "":
+                self.PrintLine(line)
+        print(' ')
         
     def SelectDifficulty(self):
         print ("1) Easy 2) Intermediate 3) Hard")
@@ -81,7 +91,7 @@ class IdleGame:
         elif userIn == '3':
             self.gameDifficulty = 5
         else:
-            print ('[ERROR] Please input a valid difficulty.\n')
+            self.PrintLine ('[ERROR] Please input a valid difficulty.\n')
             self.SelectDifficulty()
         os.system('cls' if os.name == 'nt' else 'clear')
         
@@ -92,7 +102,7 @@ class IdleGame:
         elif inp.upper() == "N":
             exit(1)
         else:
-            print("Please enter Y or N.")
+            self.PrintLine("Please enter Y or N.")
             self.AskLogout()
         
     def PlayGame(self):
@@ -105,9 +115,9 @@ class IdleGame:
             userIn = input("ENTER PASSWORD: ").upper()
             if  len(userIn) != len(self.chosenWord):
                 self.RedrawScreen()
-                print("[SYSERROR] Please enter a valid input.")
+                self.PrintLine("[SYSERROR] Please enter a valid input.")
             elif userIn == self.chosenWord:
-                print ("Success! Logging in...\n")
+                self.PrintLine ("Success! Logging in...\n")
                 self.AskLogout()
             else:
                 self.attemptsRemaining -= 1
@@ -124,19 +134,19 @@ class IdleGame:
                     os.system('cls' if os.name == 'nt' else 'clear')
                     self.ReplaceInputtedWordWithStatic(userIn)
                     self.RedrawScreen()
-                    print (userIn+": Incorrect credentials. " + str(correctCount) + "/" + str(len(self.chosenWord)) + "characters correct.")
-                
+                    self.PrintLine (userIn+": Incorrect credentials. " + str(correctCount) + "/" + str(len(self.chosenWord)) + " characters correct.")
+    
+    # Sleeps terminal for 10 seconds after game is lost, then restarts the game    
     def DoLockout(self):
         self.gameOver = True
         os.system('cls' if os.name == 'nt' else 'clear')
-        print("SECURITY PROTOCOL ENGAGED. THIS TERMINAL WILL RESTART IN 10 SECONDS...")
-        time.sleep(10)
+        self.PrintLine("SECURITY PROTOCOL ENGAGED. THIS TERMINAL WILL RESTART IN 10 SECONDS...")
         self.PlayGame()
-                   
+    
+    # Removes userIn from the screen if found. Need to redraw screen after!            
     def ReplaceInputtedWordWithStatic(self, userIn):
         try:
             output_list = list(self.outputString)
-        
             start_index = self.outputString.index(userIn)
             end_index = start_index + len(self.chosenWord)
         
@@ -147,8 +157,11 @@ class IdleGame:
     
         except ValueError:
             print(f"{userIn} not found in outputString.")
-        
-        
+            
+    def BootUpSequence(self):
+        bootupStr =  "ROBCO INDUSTRIES UNIFIED OPERATING SYSTEM\n"
+        bootupStr += "COPYRIGHT 2075-2077 ROBCO INDUSTRIES\n"
+        #for line
         
 game = IdleGame()
 game.PlayGame()
