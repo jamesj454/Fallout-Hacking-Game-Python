@@ -6,7 +6,7 @@ class IdleGame:
     
     def __init__(self):
         self.attemptsRemaining = 4  # Number of attempts before 10 sec lockout
-        self.numOfColumns = 20      # X size of grid
+        self.numOfColumns = 24      # X size of grid
         self.numOfRows = 17         # Y size of grid
         self.gameDifficulty = 5     # Num of letters in word
         self.lineScrollSpeed = 0.03 # How fast text should 'load' onto the terminal
@@ -46,29 +46,52 @@ class IdleGame:
                 time.sleep(self.lineScrollSpeed)
                 print(line)
     
-    # Called at start of game to put words in the correct places
+    def GenerateLine(self, insertChosenWordAtY, row):
+        line = []
+        if row == insertChosenWordAtY:
+            insertWordAtX = random.randint(0, self.numOfColumns - len(self.chosenWord))
+            for col in range(self.numOfColumns):
+                if col == insertWordAtX:
+                    line.append(self.chosenWord)
+                    col += len(self.chosenWord) - 1  # Adjust column index to skip over the word
+                else:
+                    line.append(random.choice(self.staticWords))
+            # Flatten the line list to a string and ensure it fits within the column limit
+            line = ''.join(line)[:self.numOfColumns]
+        else:
+            if random.random() < 0.5:
+                randomWord = random.choice(self.wordsList)
+                insertWordAtX = random.randint(0, self.numOfColumns - len(randomWord))
+                for col in range(self.numOfColumns):
+                    if col == insertWordAtX:
+                        line.append(randomWord)
+                        col += len(randomWord) - 1  # Adjust column index to skip over the word
+                    else:
+                        line.append(random.choice(self.staticWords))
+                # Flatten the line list to a string and ensure it fits within the column limit
+                line = ''.join(line)[:self.numOfColumns]
+            else:
+                line = ''.join(random.choice(self.staticWords) for _ in range(self.numOfColumns))
+        return line
+
     def GenerateScreen(self):
-        self.PrintLine ("ROBCO INDUSTRIES (TM) TERMLINK PROTOCOL")
+        self.PrintLine("ROBCO INDUSTRIES (TM) TERMLINK PROTOCOL")
         self.DrawAttemptsRemaining()
-        
+
         self.GetWords()
         self.chosenWord = random.choice(self.wordsList)
         insertChosenWordAtY = random.randint(0, self.numOfRows - 1)
+
         for row in range(self.numOfRows):
-            insertWordAtX = random.randint(0, self.numOfColumns - 1)
-            line = ""
-            for col in range(self.numOfColumns):
-                if row == insertChosenWordAtY and col == insertWordAtX:
-                    line += self.chosenWord
-                    col += len(self.chosenWord) - 1 
-                elif col == insertWordAtX:
-                    line += random.choice(self.wordsList)
-                    col += len(self.chosenWord)
-                else:
-                    line += random.choice(self.staticWords)
-            
-            self.outputString += hex(id(row)) + ' ' + line + "\n"
-            self.PrintLine(hex(id(row)) + ' ' + line)
+            # Generate two separate columns
+            line1 = self.GenerateLine(insertChosenWordAtY, row)
+            line2 = self.GenerateLine(insertChosenWordAtY, row)
+
+            memory_address1 = hex(id(line1))
+            memory_address2 = hex(id(line2))
+
+            self.outputString += f"{memory_address1} {line1}  {memory_address2} {line2}\n"
+            self.PrintLine(f"{memory_address1} {line1}  {memory_address2} {line2}")
         print('\n')
         
     def RedrawScreen(self):
@@ -82,6 +105,7 @@ class IdleGame:
         print(' ')
         
     def SelectDifficulty(self):
+        os.system('cls' if os.name == 'nt' else 'clear')
         print ("1) Easy 2) Intermediate 3) Hard")
         userIn = input ("Enter Difficulty: ")
         if userIn == '1':
@@ -107,8 +131,9 @@ class IdleGame:
         
     def PlayGame(self):
         self.__init__()
-        os.system('cls' if os.name == 'nt' else 'clear')
         self.SelectDifficulty()
+        self.BootUpSequence()
+        os.system('cls' if os.name == 'nt' else 'clear')
         self.GenerateScreen()
         self.gameOver = False
         while self.gameOver == False:
@@ -117,6 +142,7 @@ class IdleGame:
                 self.RedrawScreen()
                 self.PrintLine("[SYSERROR] Please enter a valid input.")
             elif userIn == self.chosenWord:
+                os.system('cls' if os.name == 'nt' else 'clear')
                 self.PrintLine ("Success! Logging in...\n")
                 self.AskLogout()
             else:
@@ -159,11 +185,34 @@ class IdleGame:
             print(f"{userIn} not found in outputString.")
             
     def BootUpSequence(self):
-        bootupStr =  "ROBCO INDUSTRIES UNIFIED OPERATING SYSTEM\n"
-        bootupStr += "COPYRIGHT 2075-2077 ROBCO INDUSTRIES\n"
-        #for line
-        
-game = IdleGame()
+        os.system('cls' if os.name == 'nt' else 'clear')
+        self.PrintLine("WELCOME TO ROBCO INDUSTRIES (TM) TERMLINK\n")
+        time.sleep(3)
+        self.PrintLine(">SET TERMINAL/INQUIRE\n")
+        time.sleep(1)
+        self.PrintLine("RIT-V300\n")
+        time.sleep(2)
+        self.PrintLine(">SET FILE/PROTECTION=OWNER:RWED ACCOUNTS.F\n")
+        time.sleep(2)
+        self.PrintLine(">SET HALT RESTART/MAINT\n\n")
+        time.sleep(1)
+        os.system('cls' if os.name == 'nt' else 'clear')
+        self.PrintLine("Initializing Robco Industries(TM) MF Boot Agent v2.3.0\n")
+        time.sleep(1.5)
+        self.PrintLine("RETROS BIOS")
+        time.sleep(0.5)
+        self.PrintLine("RBIOS-4.02.08.00 52EE5.E7.E8\nCopyright 2201-2203 Robco Ind.")
+        time.sleep(1)
+        self.PrintLine("Uppermem: 64 KB")
+        time.sleep(0.5)
+        self.PrintLine("Root (5A8)")
+        time.sleep(0.5)
+        self.PrintLine("Maintenance Mode\n")
+        time.sleep(0.5)
+        self.PrintLine(">RUN DEBUG/ACCOUNTS.F")
+        time.sleep(3)
+
+game = IdleGame()      
 game.PlayGame()
             
             
