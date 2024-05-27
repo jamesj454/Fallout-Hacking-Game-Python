@@ -2,14 +2,15 @@ import random
 import os      # For clearing console
 import time
 
-class IdleGame:
+class TerminalGame:
     
     def __init__(self):
-        self.attemptsRemaining = 4  # Number of attempts before 10 sec lockout
-        self.numOfColumns = 24      # X size of grid
-        self.numOfRows = 17         # Y size of grid
-        self.gameDifficulty = 5     # Num of letters in word
-        self.lineScrollSpeed = 0.03 # How fast text should 'load' onto the terminal
+        self.attemptsRemaining = 5    # Number of attempts before 10 sec lockout
+        self.numOfColumns = 24        # X size of grid
+        self.numOfRows = 17           # Y size of grid
+        self.gameDifficulty = 5       # Num of letters in word
+        self.lineScrollSpeed = 0.03   # How fast text should 'load' onto the terminal
+        self.securityLockoutTime = 10 # How long the user will be locked out if game is lost
         
         self.staticWords = ["%","!","=","(",")","*","<",">",":",";","'","@","[","]","&"]
         self.chosenWord = ""
@@ -17,7 +18,7 @@ class IdleGame:
         self.gameOver = False
         self.wordsList = []
     
-    # Gets the file that words are stored in based on difficulty.    
+    # Reads words from word list
     def GetWords(self):
         self.wordsList = []
         with open(self.GetWordFileName()) as f:
@@ -43,32 +44,30 @@ class IdleGame:
     def PrintLine(self, string): 
         output_lines = string.split('\n')
         for line in output_lines:
-                time.sleep(self.lineScrollSpeed)
-                print(line)
+                self.PrintAndSleep(line, self.lineScrollSpeed)
     
+    # Returns mem address + first column
     def GenerateLine(self, insertChosenWordAtY, row):
         line = []
-        if row == insertChosenWordAtY:
+        if row == insertChosenWordAtY and self.outputString.find(self.chosenWord) != -1:
             insertWordAtX = random.randint(0, self.numOfColumns - len(self.chosenWord))
             for col in range(self.numOfColumns):
                 if col == insertWordAtX:
                     line.append(self.chosenWord)
-                    col += len(self.chosenWord) - 1  # Adjust column index to skip over the word
+                    col += len(self.chosenWord) - 1  
                 else:
                     line.append(random.choice(self.staticWords))
-            # Flatten the line list to a string and ensure it fits within the column limit
             line = ''.join(line)[:self.numOfColumns]
         else:
             if random.random() < 0.5:
                 randomWord = random.choice(self.wordsList)
                 insertWordAtX = random.randint(0, self.numOfColumns - len(randomWord))
                 for col in range(self.numOfColumns):
-                    if col == insertWordAtX:
+                    if col == insertWordAtX and self.outputString.find(self.chosenWord) == -1:
                         line.append(randomWord)
-                        col += len(randomWord) - 1  # Adjust column index to skip over the word
+                        col += len(randomWord) - 1  
                     else:
                         line.append(random.choice(self.staticWords))
-                # Flatten the line list to a string and ensure it fits within the column limit
                 line = ''.join(line)[:self.numOfColumns]
             else:
                 line = ''.join(random.choice(self.staticWords) for _ in range(self.numOfColumns))
@@ -93,9 +92,11 @@ class IdleGame:
             self.outputString += f"{memory_address1} {line1}  {memory_address2} {line2}\n"
             self.PrintLine(f"{memory_address1} {line1}  {memory_address2} {line2}")
         print('\n')
-        
+    
+    # Refreshes the game and header, used to display messages without updating game content, or refreshing the game
+    # after a word is selected and erased with static characters
     def RedrawScreen(self):
-        os.system('cls' if os.name == 'nt' else 'clear')
+        self.ClearTerminal()
         print ("ROBCO INDUSTRIES (TM) TERMLINK PROTOCOL")
         self.DrawAttemptsRemaining()
         output_lines = self.outputString.split('\n')
@@ -103,9 +104,10 @@ class IdleGame:
             if line != "":
                 self.PrintLine(line)
         print(' ')
-        
+    
+    # Difficulty is the length of the word that will be guessed. 3 = Easy -> 5 = Hard
     def SelectDifficulty(self):
-        os.system('cls' if os.name == 'nt' else 'clear')
+        self.ClearTerminal()
         print ("1) Easy 2) Intermediate 3) Hard")
         userIn = input ("Enter Difficulty: ")
         if userIn == '1':
@@ -117,8 +119,9 @@ class IdleGame:
         else:
             self.PrintLine ('[ERROR] Please input a valid difficulty.\n')
             self.SelectDifficulty()
-        os.system('cls' if os.name == 'nt' else 'clear')
+        self.ClearTerminal()
         
+    # Ask whether to restart or close game
     def AskLogout(self):
         inp = input ("Play again? (Y/N): ")
         if inp.upper() == "Y":
@@ -129,20 +132,23 @@ class IdleGame:
             self.PrintLine("Please enter Y or N.")
             self.AskLogout()
         
+    # Select difficulty, mock boot, then generate screen, and enter game loop
     def PlayGame(self):
         self.__init__()
         self.SelectDifficulty()
         self.BootUpSequence()
-        os.system('cls' if os.name == 'nt' else 'clear')
+        
+        self.ClearTerminal()
         self.GenerateScreen()
         self.gameOver = False
+        
         while self.gameOver == False:
             userIn = input("ENTER PASSWORD: ").upper()
             if  len(userIn) != len(self.chosenWord):
                 self.RedrawScreen()
                 self.PrintLine("[SYSERROR] Please enter a valid input.")
             elif userIn == self.chosenWord:
-                os.system('cls' if os.name == 'nt' else 'clear')
+                self.ClearTerminal()
                 self.PrintLine ("Success! Logging in...\n")
                 self.AskLogout()
             else:
@@ -157,7 +163,7 @@ class IdleGame:
                         x+=1
                         if userIn[x-1] == self.chosenWord[x-1]:
                             correctCount+=1
-                    os.system('cls' if os.name == 'nt' else 'clear')
+                    self.ClearTerminal()
                     self.ReplaceInputtedWordWithStatic(userIn)
                     self.RedrawScreen()
                     self.PrintLine (userIn+": Incorrect credentials. " + str(correctCount) + "/" + str(len(self.chosenWord)) + " characters correct.")
@@ -165,8 +171,12 @@ class IdleGame:
     # Sleeps terminal for 10 seconds after game is lost, then restarts the game    
     def DoLockout(self):
         self.gameOver = True
-        os.system('cls' if os.name == 'nt' else 'clear')
-        self.PrintLine("SECURITY PROTOCOL ENGAGED. THIS TERMINAL WILL RESTART IN 10 SECONDS...")
+        timePassed = 0
+        while timePassed <= self.securityLockoutTime:
+            self.ClearTerminal()
+            print("SECURITY PROTOCOL ENGAGED. PLEASE CONTACT AN ADMINISTRATOR.\nTHIS TERMINAL WILL RESTART IN " + str(self.securityLockoutTime-timePassed) + " SECOND(S)...")
+            timePassed+=1
+            time.sleep(1)
         self.PlayGame()
     
     # Removes userIn from the screen if found. Need to redraw screen after!            
@@ -175,44 +185,40 @@ class IdleGame:
             output_list = list(self.outputString)
             start_index = self.outputString.index(userIn)
             end_index = start_index + len(self.chosenWord)
-        
             for i in range(start_index, end_index):
                 output_list[i] = random.choice(self.staticWords)
-        
             self.outputString = ''.join(output_list)
     
         except ValueError:
             print(f"{userIn} not found in outputString.")
-            
+    
+    # Simulated boot sequence, played after difficulty is selected.
     def BootUpSequence(self):
-        os.system('cls' if os.name == 'nt' else 'clear')
-        self.PrintLine("WELCOME TO ROBCO INDUSTRIES (TM) TERMLINK\n")
-        time.sleep(3)
-        self.PrintLine(">SET TERMINAL/INQUIRE\n")
-        time.sleep(1)
-        self.PrintLine("RIT-V300\n")
-        time.sleep(2)
-        self.PrintLine(">SET FILE/PROTECTION=OWNER:RWED ACCOUNTS.F\n")
-        time.sleep(2)
-        self.PrintLine(">SET HALT RESTART/MAINT\n\n")
-        time.sleep(1)
-        os.system('cls' if os.name == 'nt' else 'clear')
-        self.PrintLine("Initializing Robco Industries(TM) MF Boot Agent v2.3.0\n")
-        time.sleep(1.5)
-        self.PrintLine("RETROS BIOS")
-        time.sleep(0.5)
-        self.PrintLine("RBIOS-4.02.08.00 52EE5.E7.E8\nCopyright 2201-2203 Robco Ind.")
-        time.sleep(1)
-        self.PrintLine("Uppermem: 64 KB")
-        time.sleep(0.5)
-        self.PrintLine("Root (5A8)")
-        time.sleep(0.5)
-        self.PrintLine("Maintenance Mode\n")
-        time.sleep(0.5)
-        self.PrintLine(">RUN DEBUG/ACCOUNTS.F")
-        time.sleep(3)
+        self.ClearTerminal() # Screen 1
+        self.PrintAndSleep("WELCOME TO ROBCO INDUSTRIES (TM) TERMLINK\n", 3)
+        self.PrintAndSleep(">SET TERMINAL/INQUIRE\n", 1)
+        self.PrintAndSleep("RIT-V300\n", 2)
+        self.PrintAndSleep(">SET FILE/PROTECTION=OWNER:RWED ACCOUNTS.F\n", 2)
+        self.PrintAndSleep(">SET HALT RESTART/MAINT\n\n",1)
+        
+        self.ClearTerminal() # Screen 2
+        self.PrintAndSleep("Initializing Robco Industries(TM) MF Boot Agent v2.3.0\n",1.5)
+        self.PrintAndSleep("RETROS BIOS",0.2)
+        self.PrintAndSleep("RBIOS-4.02.08.00 52EE5.E7.E8\nCopyright 2201-2203 Robco Ind.",1)
+        self.PrintAndSleep("Uppermem: 64 KB",0.2)
+        self.PrintAndSleep("Root (5A8)",0.2)
+        self.PrintAndSleep("Maintenance Mode\n",2)
+        self.PrintAndSleep(">RUN DEBUG/ACCOUNTS.F",3)
 
-game = IdleGame()      
+    # Used to simulate line load
+    def PrintAndSleep(self, string, timeToSleepSec):
+        print(string)
+        time.sleep(timeToSleepSec)
+        
+    def ClearTerminal(self):
+        os.system('cls' if os.name == 'nt' else 'clear')
+        
+game = TerminalGame()      
 game.PlayGame()
             
             
